@@ -1,10 +1,14 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "@/styles/main.css";
+import "@/styles/responsive.css";
+import "@/styles/common.css";
+import { Poppins } from "next/font/google";
 
-export const metadata: Metadata = {
-  title: "Social Media App",
-  description: "Social Media App",
-};
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["100", "300", "400", "500", "600", "700", "800"],
+  display: "swap",
+});
 
 export default function RootLayout({
   children,
@@ -13,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className={`antialiased ${poppins.className}`}>{children}</body>
     </html>
   );
 }
