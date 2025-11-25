@@ -16,8 +16,11 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.1",
     "@prisma/client": "^7.0.0",
+    "@types/formidable": "^3.4.6",
     "bcryptjs": "^3.0.3",
     "bootstrap": "^5.3.8",
+    "date-fns": "^4.1.0",
+    "formidable": "^3.5.4",
     "jsonwebtoken": "^9.0.2",
     "next": "16.0.3",
     "pg": "^8.16.3",
