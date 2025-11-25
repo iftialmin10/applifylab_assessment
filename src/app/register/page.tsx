@@ -1,4 +1,115 @@
+/* eslint-disable @next/next/no-img-element */
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ChangeEvent, FormEvent, useState } from "react";
+
+import { AuthField } from "@/components/forms/AuthField";
+import { registerSchema, type RegisterSchema } from "@/lib/validations/auth";
+
+type RegisterFormState = RegisterSchema & {
+  confirmPassword: string;
+};
+
+type RegisterErrors = Partial<Record<keyof RegisterFormState, string>>;
+
 export default function Register() {
+  const router = useRouter();
+  const [formData, setFormData] = useState<RegisterFormState>({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+  const [fieldErrors, setFieldErrors] = useState<RegisterErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFieldErrors({});
+    setServerError(null);
+    setSuccessMessage(null);
+
+    const registerData = {
+      email: formData.email,
+      password: formData.password,
+    };
+
+    const parsed = registerSchema.safeParse(registerData);
+    const errors: RegisterErrors = {};
+
+    if (!parsed.success) {
+      const parsedErrors = parsed.error.flatten().fieldErrors;
+      Object.entries(parsedErrors).forEach(([key, value]) => {
+        if (value?.length) {
+          errors[key as keyof RegisterFormState] = value[0];
+        }
+      });
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = "Passwords do not match";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(parsed.data),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        const apiErrors = payload?.errors as
+          | Record<string, string[]>
+          | undefined;
+        if (apiErrors) {
+          const formattedErrors = Object.entries(apiErrors).reduce(
+            (acc, [key, messages]) => {
+              if (messages?.length) {
+                acc[key as keyof RegisterFormState] = messages[0];
+              }
+              return acc;
+            },
+            {} as RegisterErrors
+          );
+          setFieldErrors(formattedErrors);
+        }
+        setServerError(
+          payload?.message ?? "Registration failed. Please try again."
+        );
+        return;
+      }
+
+      setSuccessMessage(payload?.message ?? "Registration successful!");
+
+      setTimeout(() => {
+        router.push("/feed");
+      }, 1000);
+    } catch {
+      setServerError("Something went wrong. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <section className="_social_registration_wrapper _layout_main_wrapper">
@@ -65,40 +176,73 @@ export default function Register() {
                     {" "}
                     <span>Or</span>
                   </div>
-                  <form className="_social_registration_form">
+                  {serverError && (
+                    <div
+                      className="_form_error _mar_b14"
+                      role="alert"
+                      aria-live="assertive"
+                    >
+                      {serverError}
+                    </div>
+                  )}
+                  {successMessage && (
+                    <div
+                      className="_form_success _mar_b14"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {successMessage}
+                    </div>
+                  )}
+                  <form
+                    className="_social_registration_form"
+                    onSubmit={handleSubmit}
+                  >
                     <div className="row">
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                        <div className="_social_registration_form_input _mar_b14">
-                          <label className="_social_registration_label _mar_b8">
-                            Email
-                          </label>
-                          <input
-                            type="email"
-                            className="form-control _social_registration_input"
-                          />
-                        </div>
+                        <AuthField
+                          id="register-email"
+                          name="email"
+                          label="Email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          error={fieldErrors.email}
+                          autoComplete="email"
+                          wrapperClassName="_social_registration_form_input _mar_b14"
+                          labelClassName="_social_registration_label _mar_b8"
+                          inputClassName="form-control _social_registration_input"
+                        />
                       </div>
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                        <div className="_social_registration_form_input _mar_b14">
-                          <label className="_social_registration_label _mar_b8">
-                            Password
-                          </label>
-                          <input
-                            type="password"
-                            className="form-control _social_registration_input"
-                          />
-                        </div>
+                        <AuthField
+                          id="register-password"
+                          name="password"
+                          label="Password"
+                          type="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          error={fieldErrors.password}
+                          autoComplete="new-password"
+                          wrapperClassName="_social_registration_form_input _mar_b14"
+                          labelClassName="_social_registration_label _mar_b8"
+                          inputClassName="form-control _social_registration_input"
+                        />
                       </div>
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                        <div className="_social_registration_form_input _mar_b14">
-                          <label className="_social_registration_label _mar_b8">
-                            Repeat Password
-                          </label>
-                          <input
-                            type="password"
-                            className="form-control _social_registration_input"
-                          />
-                        </div>
+                        <AuthField
+                          id="register-confirm-password"
+                          name="confirmPassword"
+                          label="Repeat Password"
+                          type="password"
+                          value={formData.confirmPassword}
+                          onChange={handleInputChange}
+                          error={fieldErrors.confirmPassword}
+                          autoComplete="new-password"
+                          wrapperClassName="_social_registration_form_input _mar_b14"
+                          labelClassName="_social_registration_label _mar_b8"
+                          inputClassName="form-control _social_registration_input"
+                        />
                       </div>
                     </div>
                     <div className="row">
@@ -109,7 +253,7 @@ export default function Register() {
                             type="checkbox"
                             name="flexCheckboxDefault"
                             id="flexCheckboxDefault"
-                            checked
+                            defaultChecked
                           />
                           <label
                             className="form-check-label _social_registration_form_check_label"
@@ -124,10 +268,11 @@ export default function Register() {
                       <div className="col-lg-12 col-md-12 col-xl-12 col-sm-12">
                         <div className="_social_registration_form_btn _mar_t40 _mar_b60">
                           <button
-                            type="button"
+                            type="submit"
                             className="_social_registration_form_btn_link _btn1"
+                            disabled={isSubmitting}
                           >
-                            Login now
+                            {isSubmitting ? "Processing..." : "Register now"}
                           </button>
                         </div>
                       </div>
@@ -137,7 +282,8 @@ export default function Register() {
                     <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
                       <div className="_social_registration_bottom_txt">
                         <p className="_social_registration_bottom_txt_para">
-                          Already have an account? <a href="/login">Login</a>
+                          Already have an account?{" "}
+                          <Link href="/login">Login</Link>
                         </p>
                       </div>
                     </div>

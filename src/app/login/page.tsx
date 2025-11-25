@@ -1,9 +1,11 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState } from "react";
 
+import { AuthField } from "@/components/forms/AuthField";
 import { loginSchema, type LoginSchema } from "@/lib/validations/auth";
 
 type LoginErrors = Partial<Record<keyof LoginSchema, string>>;
@@ -19,9 +21,7 @@ export default function Login() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleInputChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const { name, value } = event.target;
     setFormData((previous) => ({ ...previous, [name]: value }));
   };
@@ -180,70 +180,28 @@ export default function Login() {
                   <form className="_social_login_form" onSubmit={handleSubmit}>
                     <div className="row">
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                        <div className="_social_login_form_input _mar_b14">
-                          <label
-                            className="_social_login_label _mar_b8"
-                            htmlFor="email"
-                          >
-                            Email
-                          </label>
-                          <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            className="form-control _social_login_input"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            autoComplete="email"
-                            aria-invalid={Boolean(fieldErrors.email)}
-                            aria-describedby={
-                              fieldErrors.email ? "email-error" : undefined
-                            }
-                          />
-                          {fieldErrors.email && (
-                            <p
-                              id="email-error"
-                              className="_form_error"
-                              role="alert"
-                            >
-                              {fieldErrors.email}
-                            </p>
-                          )}
-                        </div>
+                        <AuthField
+                          id="email"
+                          name="email"
+                          label="Email"
+                          type="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          error={fieldErrors.email}
+                          autoComplete="email"
+                        />
                       </div>
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
-                        <div className="_social_login_form_input _mar_b14">
-                          <label
-                            className="_social_login_label _mar_b8"
-                            htmlFor="password"
-                          >
-                            Password
-                          </label>
-                          <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            className="form-control _social_login_input"
-                            value={formData.password}
-                            onChange={handleInputChange}
-                            autoComplete="current-password"
-                            aria-invalid={Boolean(fieldErrors.password)}
-                            aria-describedby={
-                              fieldErrors.password
-                                ? "password-error"
-                                : undefined
-                            }
-                          />
-                          {fieldErrors.password && (
-                            <p
-                              id="password-error"
-                              className="_form_error"
-                              role="alert"
-                            >
-                              {fieldErrors.password}
-                            </p>
-                          )}
-                        </div>
+                        <AuthField
+                          id="password"
+                          name="password"
+                          label="Password"
+                          type="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          error={fieldErrors.password}
+                          autoComplete="current-password"
+                        />
                       </div>
                     </div>
                     <div className="row">

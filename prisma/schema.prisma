@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -7,6 +8,7 @@ datasource db {
 }
 
 model User {
-  id    String @id @default(cuid())
-  email String @unique
+  id       String @id @default(cuid())
+  email    String @unique
+  password String
 }

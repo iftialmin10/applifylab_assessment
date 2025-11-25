@@ -1,11 +1,11 @@
 export const runtime = "nodejs";
 
-import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
+import { hash } from "bcryptjs";
 
 import { createToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { loginSchema } from "@/lib/validations/auth";
+import { registerSchema } from "@/lib/validations/auth";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = loginSchema.safeParse(body);
+  const parsed = registerSchema.safeParse(body);
 
   if (!parsed.success) {
     const { fieldErrors } = parsed.error.flatten();
@@ -35,30 +35,25 @@ export async function POST(request: Request) {
   const { email, password } = parsed.data;
 
   try {
-    const user = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        password: true,
-      },
     });
 
-    if (!user) {
+    if (existingUser) {
       return NextResponse.json(
-        { message: "Invalid email or password" },
-        { status: 401 }
+        { message: "An account with this email already exists" },
+        { status: 409 }
       );
     }
 
-    const isValidPassword = await compare(password, user.password);
+    const passwordHash = await hash(password, 12);
 
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { message: "Invalid email or password" },
-        { status: 401 }
-      );
-    }
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: passwordHash,
+      },
+    });
 
     const token = createToken({
       userId: user.id,
@@ -67,13 +62,13 @@ export async function POST(request: Request) {
 
     const response = NextResponse.json(
       {
-        message: "Login successful",
+        message: "Registration successful",
         user: {
           id: user.id,
           email: user.email,
         },
       },
-      { status: 200 }
+      { status: 201 }
     );
 
     const isProduction = process.env.NODE_ENV === "production";
@@ -87,9 +82,9 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("Registration error:", error);
     return NextResponse.json(
-      { message: "An error occurred during login" },
+      { message: "An error occurred during registration" },
       { status: 500 }
     );
   }

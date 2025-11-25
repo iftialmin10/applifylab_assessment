@@ -1,8 +1,10 @@
-import jwt from "jsonwebtoken";
+import jwt, { type Secret, type SignOptions } from "jsonwebtoken";
 
-const JWT_SECRET =
+const JWT_SECRET: Secret =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const signOptions: SignOptions = {
+  expiresIn: (process.env.JWT_EXPIRES_IN || "7d") as SignOptions["expiresIn"],
+};
 
 export interface JWTPayload {
   userId: string;
@@ -10,16 +12,14 @@ export interface JWTPayload {
 }
 
 export function createToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
-  });
+  return jwt.sign(payload, JWT_SECRET, signOptions);
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
     return decoded;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
