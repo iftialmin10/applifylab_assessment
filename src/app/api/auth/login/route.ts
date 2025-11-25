@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { createToken } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 
 export async function POST(request: Request) {
@@ -7,7 +9,7 @@ export async function POST(request: Request) {
 
   try {
     body = await request.json();
-  } catch (_error) {
+  } catch {
     return NextResponse.json(
       { message: "Invalid JSON payload" },
       { status: 400 }
@@ -27,8 +29,51 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({
-    message: "Login request accepted",
-    data: parsed.data,
-  });
+  const { email } = parsed.data;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { message: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    const token = createToken({
+      userId: user.id,
+      email: user.email,
+    });
+
+    const response = NextResponse.json(
+      {
+        message: "Login successful",
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      },
+      { status: 200 }
+    );
+
+    const isProduction = process.env.NODE_ENV === "production";
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+
+    return response;
+  } catch (error) {
+    console.error("Login error:", error);
+    return NextResponse.json(
+      { message: "An error occurred during login" },
+      { status: 500 }
+    );
+  }
 }

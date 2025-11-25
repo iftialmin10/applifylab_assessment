@@ -137,8 +137,7 @@ export default function Register() {
                     <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
                       <div className="_social_registration_bottom_txt">
                         <p className="_social_registration_bottom_txt_para">
-                          Dont have an account?{" "}
-                          <a href="#0">Create New Account</a>
+                          Already have an account? <a href="/login">Login</a>
                         </p>
                       </div>
                     </div>

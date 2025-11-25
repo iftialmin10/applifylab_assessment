@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { loginSchema, type LoginSchema } from "@/lib/validations/auth";
@@ -8,6 +9,7 @@ import { loginSchema, type LoginSchema } from "@/lib/validations/auth";
 type LoginErrors = Partial<Record<keyof LoginSchema, string>>;
 
 export default function Login() {
+  const router = useRouter();
   const [formData, setFormData] = useState<LoginSchema>({
     email: "",
     password: "",
@@ -79,7 +81,11 @@ export default function Login() {
       }
 
       setSuccessMessage(payload?.message ?? "Login successful!");
-    } catch (_error) {
+
+      setTimeout(() => {
+        router.push("/feed");
+      }, 1000);
+    } catch {
       setServerError("Something went wrong. Please try again later.");
     } finally {
       setIsSubmitting(false);
