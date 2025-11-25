@@ -103,7 +103,8 @@ export default function Register() {
       setTimeout(() => {
         router.push("/feed");
       }, 1000);
-    } catch {
+    } catch (error) {
+      console.error("Registration error:", error);
       setServerError("Something went wrong. Please try again later.");
     } finally {
       setIsSubmitting(false);

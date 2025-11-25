@@ -1,11 +1,11 @@
-export const runtime = "nodejs";
-
 import { compare } from "bcryptjs";
 import { NextResponse } from "next/server";
 
 import { createToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   let body: unknown;

@@ -1,7 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { PostCard } from "@/components/posts/PostCard";
 import { PostForm } from "@/components/posts/PostForm";
 
@@ -20,10 +21,13 @@ interface Post {
 }
 
 export default function Feed() {
+  const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       const response = await fetch("/api/posts");
       const data = await response.json();
@@ -32,18 +36,63 @@ export default function Feed() {
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          setIsAuthenticated(true);
+          await fetchPosts();
+        } else {
+          setIsAuthenticated(false);
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false);
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, fetchPosts]);
 
   const handlePostCreated = () => {
     fetchPosts();
   };
+
+  if (loading || isAuthenticated === false) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "100vh" }}
+      >
+        <div className="text-center">
+          {loading ? (
+            <>
+              <div className="spinner-border" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="mt-3">Loading...</p>
+            </>
+          ) : (
+            <p>Redirecting to login...</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
     <>
