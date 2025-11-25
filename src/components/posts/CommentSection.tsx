@@ -48,12 +48,10 @@ export function CommentSection({
   const [showComments, setShowComments] = useState(false);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
 
-  // Sync comments with prop changes
   useEffect(() => {
     setComments(initialComments);
   }, [initialComments]);
 
-  // Fetch comments when user wants to show them
   const fetchComments = async () => {
     setIsLoadingComments(true);
     try {
@@ -88,7 +86,7 @@ export function CommentSection({
       if (response.ok) {
         setComments((prev) => [...prev, data.comment]);
         setNewComment("");
-        setShowComments(true); // Show comments after adding
+        setShowComments(true);
         onCommentAdded();
       }
     } catch (error) {
