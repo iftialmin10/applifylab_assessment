@@ -27,17 +27,40 @@ export default function Feed() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
 
-  const fetchPosts = useCallback(async () => {
-    try {
-      const response = await fetch("/api/posts");
-      const data = await response.json();
-      if (response.ok) {
-        setPosts(data.posts || []);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const fetchPosts = useCallback(
+    async (cursor?: string | null, append = false) => {
+      if (append) {
+        setLoadingMore(true);
       }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    }
-  }, []);
+      try {
+        const url = cursor
+          ? `/api/posts?cursor=${cursor}&limit=20`
+          : "/api/posts?limit=20";
+        const response = await fetch(url);
+        const data = await response.json();
+        if (response.ok) {
+          if (append) {
+            setPosts((prev) => [...prev, ...(data.posts || [])]);
+          } else {
+            setPosts(data.posts || []);
+          }
+          setNextCursor(data.pagination?.nextCursor || null);
+          setHasMore(data.pagination?.hasMore || false);
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      } finally {
+        if (append) {
+          setLoadingMore(false);
+        }
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -65,8 +88,14 @@ export default function Feed() {
   }, [router, fetchPosts]);
 
   const handlePostCreated = () => {
-    fetchPosts();
+    fetchPosts(null, false); // Refresh from beginning
   };
+
+  const loadMorePosts = useCallback(() => {
+    if (nextCursor && hasMore && !loadingMore) {
+      fetchPosts(nextCursor, true);
+    }
+  }, [nextCursor, hasMore, loadingMore, fetchPosts]);
 
   if (loading || isAuthenticated === false) {
     return (
@@ -1816,9 +1845,22 @@ export default function Feed() {
                           <p>Loading posts...</p>
                         </div>
                       ) : (
-                        posts.map((post) => (
-                          <PostCard key={post.id} post={post} />
-                        ))
+                        <>
+                          {posts.map((post) => (
+                            <PostCard key={post.id} post={post} />
+                          ))}
+                          {hasMore && nextCursor && (
+                            <div className="text-center mt-4 mb-4">
+                              <button
+                                onClick={loadMorePosts}
+                                className="btn btn-primary"
+                                disabled={loadingMore}
+                              >
+                                {loadingMore ? "Loading..." : "Load More Posts"}
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                       <div className="_feed_inner_timeline_post_area _b_radious6 _padd_b24 _padd_t24 _mar_b16">
                         <div className="_feed_inner_timeline_content _padd_r24 _padd_l24">

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createReplySchema } from "@/lib/validations/comment";
+import { checkRateLimit } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,27 @@ export async function POST(
       );
     }
 
+    // Rate limiting
+    const rateLimit = checkRateLimit(
+      `reply:create:${payload.userId}`,
+      30,
+      60000
+    );
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { message: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
+
+    // Sanitize content
+    const { sanitizeInput } = await import("@/lib/security");
+    if (body.content) {
+      body.content = sanitizeInput(body.content);
+    }
+
     const parsed = createReplySchema.safeParse(body);
 
     if (!parsed.success) {

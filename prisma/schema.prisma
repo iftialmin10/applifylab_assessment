@@ -29,6 +29,10 @@ model Post {
   comments  Comment[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([authorId, createdAt])
 }
 
 model Comment {
@@ -42,6 +46,10 @@ model Comment {
   likes     Like[]
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([postId])
+  @@index([postId, createdAt])
+  @@index([authorId])
 }
 
 model Reply {
@@ -54,6 +62,10 @@ model Reply {
   likes     Like[]
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([commentId])
+  @@index([commentId, createdAt])
+  @@index([authorId])
 }
 
 model Like {
@@ -74,4 +86,5 @@ model Like {
   @@index([postId])
   @@index([commentId])
   @@index([replyId])
+  @@index([userId])
 }

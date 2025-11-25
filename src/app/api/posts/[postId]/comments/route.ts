@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createCommentSchema } from "@/lib/validations/comment";
+import { checkRateLimit } from "@/lib/security";
+import { parsePaginationParams, DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 
 export const runtime = "nodejs";
 
@@ -15,8 +17,22 @@ export async function GET(
     const token = getTokenFromRequest(request);
     const userId = token ? verifyToken(token)?.userId : null;
 
+    const clientId =
+      userId || request.headers.get("x-forwarded-for") || "anonymous";
+    const rateLimit = checkRateLimit(`comments:${clientId}`, 200, 60000);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { message: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    const url = new URL(request.url);
+    const { limit } = parsePaginationParams(url.searchParams);
+
     const comments = await prisma.comment.findMany({
       where: { postId },
+      take: limit,
       include: {
         author: {
           select: {
@@ -151,7 +167,25 @@ export async function POST(
       return NextResponse.json({ message: "Post not found" }, { status: 404 });
     }
 
+    const rateLimit = checkRateLimit(
+      `comment:create:${payload.userId}`,
+      30,
+      60000
+    );
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { message: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
+
+    const { sanitizeInput } = await import("@/lib/security");
+    if (body.content) {
+      body.content = sanitizeInput(body.content);
+    }
+
     const parsed = createCommentSchema.safeParse(body);
 
     if (!parsed.success) {
