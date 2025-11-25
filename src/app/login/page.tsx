@@ -1,4 +1,91 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useState } from "react";
+
+import { loginSchema, type LoginSchema } from "@/lib/validations/auth";
+
+type LoginErrors = Partial<Record<keyof LoginSchema, string>>;
+
 export default function Login() {
+  const [formData, setFormData] = useState<LoginSchema>({
+    email: "",
+    password: "",
+  });
+  const [fieldErrors, setFieldErrors] = useState<LoginErrors>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ): void => {
+    const { name, value } = event.target;
+    setFormData((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFieldErrors({});
+    setServerError(null);
+    setSuccessMessage(null);
+
+    const parsed = loginSchema.safeParse(formData);
+
+    if (!parsed.success) {
+      const formatted = Object.entries(
+        parsed.error.flatten().fieldErrors
+      ).reduce((acc, [key, value]) => {
+        if (value?.length) {
+          acc[key as keyof LoginSchema] = value[0];
+        }
+        return acc;
+      }, {} as LoginErrors);
+      setFieldErrors(formatted);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(parsed.data),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        const apiErrors = payload?.errors as
+          | Record<string, string[]>
+          | undefined;
+        if (apiErrors) {
+          const formattedErrors = Object.entries(apiErrors).reduce(
+            (acc, [key, messages]) => {
+              if (messages?.length) {
+                acc[key as keyof LoginSchema] = messages[0];
+              }
+              return acc;
+            },
+            {} as LoginErrors
+          );
+          setFieldErrors(formattedErrors);
+        }
+        setServerError(payload?.message ?? "Login failed. Please try again.");
+        return;
+      }
+
+      setSuccessMessage(payload?.message ?? "Login successful!");
+    } catch (_error) {
+      setServerError("Something went wrong. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <section className="_social_login_wrapper _layout_main_wrapper">
@@ -66,28 +153,90 @@ export default function Login() {
                     {" "}
                     <span>Or</span>
                   </div>
-                  <form className="_social_login_form">
+                  {serverError && (
+                    <div
+                      className="_form_error _mar_b14"
+                      role="alert"
+                      aria-live="assertive"
+                    >
+                      {serverError}
+                    </div>
+                  )}
+                  {successMessage && (
+                    <div
+                      className="_form_success _mar_b14"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {successMessage}
+                    </div>
+                  )}
+                  <form className="_social_login_form" onSubmit={handleSubmit}>
                     <div className="row">
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
                         <div className="_social_login_form_input _mar_b14">
-                          <label className="_social_login_label _mar_b8">
+                          <label
+                            className="_social_login_label _mar_b8"
+                            htmlFor="email"
+                          >
                             Email
                           </label>
                           <input
+                            id="email"
+                            name="email"
                             type="email"
                             className="form-control _social_login_input"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            autoComplete="email"
+                            aria-invalid={Boolean(fieldErrors.email)}
+                            aria-describedby={
+                              fieldErrors.email ? "email-error" : undefined
+                            }
                           />
+                          {fieldErrors.email && (
+                            <p
+                              id="email-error"
+                              className="_form_error"
+                              role="alert"
+                            >
+                              {fieldErrors.email}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="col-xl-12 col-lg-12 col-md-12 col-sm-12">
                         <div className="_social_login_form_input _mar_b14">
-                          <label className="_social_login_label _mar_b8">
+                          <label
+                            className="_social_login_label _mar_b8"
+                            htmlFor="password"
+                          >
                             Password
                           </label>
                           <input
+                            id="password"
+                            name="password"
                             type="password"
                             className="form-control _social_login_input"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            autoComplete="current-password"
+                            aria-invalid={Boolean(fieldErrors.password)}
+                            aria-describedby={
+                              fieldErrors.password
+                                ? "password-error"
+                                : undefined
+                            }
                           />
+                          {fieldErrors.password && (
+                            <p
+                              id="password-error"
+                              className="_form_error"
+                              role="alert"
+                            >
+                              {fieldErrors.password}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -99,7 +248,7 @@ export default function Login() {
                             type="checkbox"
                             name="rememberMe"
                             id="rememberMe"
-                            checked
+                            defaultChecked
                           />
                           <label
                             className="form-check-label _social_login_form_check_label"
@@ -121,10 +270,11 @@ export default function Login() {
                       <div className="col-lg-12 col-md-12 col-xl-12 col-sm-12">
                         <div className="_social_login_form_btn _mar_t40 _mar_b60">
                           <button
-                            type="button"
+                            type="submit"
                             className="_social_login_form_btn_link _btn1"
+                            disabled={isSubmitting}
                           >
-                            Login now
+                            {isSubmitting ? "Processing..." : "Login now"}
                           </button>
                         </div>
                       </div>
@@ -135,7 +285,7 @@ export default function Login() {
                       <div className="_social_login_bottom_txt">
                         <p className="_social_login_bottom_txt_para">
                           Dont have an account?{" "}
-                          <a href="/register">Create New Account</a>
+                          <Link href="/register">Create New Account</Link>
                         </p>
                       </div>
                     </div>
